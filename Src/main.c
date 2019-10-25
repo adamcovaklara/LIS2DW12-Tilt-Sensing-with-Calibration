@@ -434,15 +434,21 @@ typedef struct myData
 	float x, y, z;
 } myData;
 
-myData GetMyData(char * output)
+myData GetMyData6Point(char * output)
 {
 	printf("%s\r\nScanning...\r\n", output);
 	HAL_Delay(5000);
 	IKS01A3_MOTION_SENSOR_Axes_t raw_data;
 	IKS01A3_MOTION_SENSOR_GetAxes(IKS01A3_LIS2DW12_0, MOTION_ACCELERO, &raw_data);
 	myData res = {raw_data.x, raw_data.y, raw_data.z};
-	//printf("x: = %f, y = %f, z = %f\r\n", res.x/1000.0f, res.y/1000.0f, res.z/1000.0f);
-	//HAL_Delay(5000);
+	return res;
+}
+
+myData GetMyDataMiniMax(void)
+{
+	IKS01A3_MOTION_SENSOR_Axes_t raw_data;
+	IKS01A3_MOTION_SENSOR_GetAxes(IKS01A3_LIS2DW12_0, MOTION_ACCELERO, &raw_data);
+	myData res = {raw_data.x, raw_data.y, raw_data.z};
 	return res;
 }
 
@@ -474,52 +480,50 @@ void NoCalibration_MiniMax(void)
 
 void Calibration_6point(void)
 {
-	myData data = GetMyData("Place the board horizontally on the table.");
+	myData data = GetMyData6Point("Place the board horizontally on the table.");
 	Parameters.offset_x = data.x;
 	Parameters.offset_y = data.y;
 	Parameters.offset_z = data.z;
 	
-	data = GetMyData("Turn the board over.");
+	data = GetMyData6Point("Turn the board over.");
 	Parameters.offset_x = (Parameters.offset_x + data.x) / 2;
 	Parameters.offset_y = (Parameters.offset_y + data.y) / 2;
 	Parameters.gain_z = fabs(Parameters.offset_z + data.z) / 2;
 	Parameters.offset_z = (Parameters.offset_z + data.z) / 2;
 	
-	data = GetMyData("Place the board vertically to the table (USB up).");
+	data = GetMyData6Point("Place the board vertically to the table (USB up).");
 	Parameters.gain_y = data.y;
 
-	data = GetMyData("Turn the board over (USB down).");
+	data = GetMyData6Point("Turn the board over (USB down).");
 	Parameters.gain_y = fabs(Parameters.gain_y + data.y) / 2;
 	
-	data = GetMyData("Place the board in front of you (looking on USB).");
+	data = GetMyData6Point("Place the board in front of you (looking on USB).");
 	Parameters.gain_x = data.x;
 			
-	data = GetMyData("Rotate the board by 180 degrees (USB hidden).");
+	data = GetMyData6Point("Rotate the board by 180 degrees (USB hidden).");
 	Parameters.gain_x = fabs(Parameters.gain_x + data.x) / 2;
 	
 	printf("\r\nCalibration done.\r\n");
-	//printf("offset x: %f, offset y: %f, offset z: %f, gain x: %f, gain y: %f, gain z: %f", Parameters.offset_x, Parameters.offset_y, Parameters.offset_z, Parameters.gain_x,
-	// Parameters.gain_y, Parameters.gain_z);
-	//HAL_Delay(10000);
 }
 
 void Calibration_MiniMax(void)
 {
 	int wait = 10000;
-	int tickstart = HAL_GetTick();
-
-	myData data = GetMyData("Rotate the board in all directions for 10 seconds.");
-
+	printf("Rotate the board in all directions for 10 seconds.");
+	myData data = GetMyDataMiniMax();
+	HAL_Delay (5000);
+	
 	float x_min = data.x;
 	float y_min = data.y;
 	float z_min = data.z;
 	float x_max = data.x;
 	float y_max = data.y;
 	float z_max = data.z;
-	
+
+	uint32_t tickstart = HAL_GetTick();
 	while ((HAL_GetTick() - tickstart) < wait)
 	{
-	data = GetMyData("");
+	data = GetMyDataMiniMax();
 	if (data.x < x_min)
 		x_min = data.x;
 	else if (data.x > x_max)
@@ -551,9 +555,6 @@ void Calibration_MiniMax(void)
 	Parameters.gain_z = (one_G - Parameters.offset_z) / z_max;
 	
 	printf("\r\nCalibration done.\r\n");
-	//printf("offset x: %f, offset y: %f, offset z: %f, gain x: %f, gain y: %f, gain z: %f", Parameters.offset_x, Parameters.offset_y, Parameters.offset_z, Parameters.gain_x,
-	//Parameters.gain_y, Parameters.gain_z);
-	//HAL_Delay(10000);
 }
 
 /**
